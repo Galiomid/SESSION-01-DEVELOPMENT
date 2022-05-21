@@ -1,87 +1,98 @@
 pipeline {
     agent any
 
-    environment {
-		DOCKERHUB_CREDENTIALS=credentials('docker hub')
-	}
-
-    options { buildDiscarder(logRotator(artifactDaysToKeepStr: '',
-     artifactNumToKeepStr: '', daysToKeepStr: '3', numToKeepStr: '5'))
-      disableConcurrentBuilds() }
-      
-      
     stages {
-     
-     
 
+        stage('clean') {
+            agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
 
-     stage('Build images') {
-            steps {
-                sh '''
-                docker build -t amy:001 .
-                
-                '''
-            }
-        }
-
-
-     stage('Tag image ') {
             steps {
                sh '''
-              docker tag amy:001  devopseasylearning2021/amy:001 
-                '''
+              mvn clean
+               '''
             }
         }
 
+        stage('compile') {
+            agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
 
-
-      stage('Docker Login') {
-
-			steps {
-				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-			}
-		}
-
-           
-            
-
-     stage('Docker push ') {
             steps {
                sh '''
-              docker push devopseasylearning2021/amy:001 
-                '''
+             mvn compile
+               '''
+            }
+        }
+
+stage('validate') {
+    agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
+
+            steps {
+               sh '''
+               mvn validate
+               '''
             }
         }
 
 
 
+stage('test') {
+    agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
+
+            steps {
+               sh '''
+             mvn test 
+               '''
+            }
+        }
+
+stage('package') {
+    agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
+
+            steps {
+               sh '''
+              mvn package
+              ls -l webapp/target
+              pwd
+               '''
+            }
+        }
+
+stage('verify') {
+    agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
+
+            steps {
+               sh '''
+              mvn verify
+               '''
+            }
+        }
+
+
+stage('install') {
+    agent {
+                 docker { image 'maven:3.8.5-openjdk-8-slim' }
+             }
+
+            steps {
+               sh '''
+           mvn install
+               '''
+            }
+        }
+       
+
 
     }
-
-
-
-
-   post {
-   
-   success {
-      slackSend (channel: '#development-alerts', color: 'good', message: "SUCCESSFUL:  Branch name  <<${env.BRANCH_NAME}>>  Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
-    }
-
- 
-    unstable {
-      slackSend (channel: '#development-alerts', color: 'warning', message: "UNSTABLE:  Branch name  <<${env.BRANCH_NAME}>>  Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
-    }
-
-    failure {
-      slackSend (channel: '#development-alerts', color: '#FF0000', message: "FAILURE:  Branch name  <<${env.BRANCH_NAME}>> Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
-    }
-   
-    cleanup {
-      deleteDir()
-    }
-}
-
-
-
-
 }
