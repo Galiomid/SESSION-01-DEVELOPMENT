@@ -2,6 +2,27 @@ pipeline {
     agent any
 
     stages {
+        
+       stage('Setup parameters') {
+            steps {
+                script { 
+                    properties([
+                        parameters([
+                          
+
+                            string(
+                                defaultValue: '001', 
+                                name: 'Image-TAG', 
+                                trim: true
+                            )
+                        ])
+                    ])
+                }
+            }
+        }
+
+
+
 
         stage('clean') {
             agent {
@@ -10,6 +31,7 @@ pipeline {
 
             steps {
                sh '''
+               rm -rf webapp/target/webapp.war || true
               mvn clean
                '''
             }
@@ -60,6 +82,7 @@ stage('package') {
 
             steps {
                sh '''
+            
               mvn package
               ls -l webapp/target
               pwd
@@ -88,6 +111,15 @@ stage('install') {
             steps {
                sh '''
            mvn install
+               '''
+            }
+        }
+       
+stage('build ') {
+
+            steps {
+               sh '''
+           docker build -t devopseasylearning2021:$Image-TAG .
                '''
             }
         }
